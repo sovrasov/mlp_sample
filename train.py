@@ -1,24 +1,27 @@
 from utils.data import *
+from mlp.mlp import MLP
+
 import numpy as np
-from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
-from sklearn.preprocessing import StandardScaler
 
 def main():
     objects, labels, ids =  load_data('./data/train.csv')
-    scaler = StandardScaler()
-    scaler.fit(objects)
-    print(scaler.mean_, scaler.var_)
-    objects = scaler.transform(objects)
-    xTrain, yTrain, xTest, yTest = split_dataset(objects, labels, testRatio=.4, seed=1)
+    normalizer = DataNormalizer()
+    normalizer.fit(objects)
+    objects = normalizer.transform(objects)
+
+    xTrain, yTrain, xTest, yTest = split_dataset(objects, labels, testRatio=.2, seed=1)
 
     n_epochs = 2
     batch_size = 200
     num_iters = int(float(len(xTrain)) / batch_size * n_epochs)
-    print('Max num_iters {}'.format(num_iters))
-    clf = MLPClassifier(hidden_layer_sizes=(10), alpha=0.000, activation='relu',\
-        solver='sgd', learning_rate='adaptive', learning_rate_init=0.1, verbose=True,\
-        momentum=0.9, batch_size=batch_size, max_iter=num_iters, tol=1e-8)
+    print('SGD max iters: {}'.format(num_iters))
+
+    clf = MLP()
+
+    #clf = MLPClassifier(hidden_layer_sizes=(10), alpha=0.000, activation='relu',\
+    #    solver='sgd', learning_rate='adaptive', learning_rate_init=0.1, verbose=True,\
+    #    momentum=0.9, batch_size=batch_size, max_iter=num_iters, tol=1e-8)
 
     print('Training...')
     clf.fit(xTrain, yTrain)
@@ -28,6 +31,13 @@ def main():
 
     score = clf.score(xTrain, yTrain)
     print('Train score = ' + str(score))
+
+    print('Writing a submission file...')
+    test_objects, test_labels, test_ids =  load_data('./data/test.csv')
+    test_objects = normalizer.transform(test_objects)
+    normalizer.fit(test_objects)
+    predictions = clf.predict(test_objects)
+    save_predictions('submission.csv', test_ids, predictions)
 
 if __name__ == '__main__':
     main()
