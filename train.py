@@ -17,7 +17,7 @@ def main():
     num_iters = int(float(len(xTrain)) / batch_size * n_epochs)
     print('SGD max iters: {}'.format(num_iters))
 
-    clf = MLP()
+    clf = MLP(lr=0.1, bs=batch_size, momentum=0.9, verbose=True, max_iters=num_iters, eps=1e-8)
 
     #clf = MLPClassifier(hidden_layer_sizes=(10), alpha=0.000, activation='relu',\
     #    solver='sgd', learning_rate='adaptive', learning_rate_init=0.1, verbose=True,\
@@ -35,7 +35,6 @@ def main():
     print('Writing a submission file...')
     test_objects, test_labels, test_ids =  load_data('./data/test.csv')
     test_objects = normalizer.transform(test_objects)
-    normalizer.fit(test_objects)
     predictions = clf.predict(test_objects)
     save_predictions('submission.csv', test_ids, predictions)
 
