@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.neural_network import MLPClassifier
 
 def main():
-    objects, labels, ids =  load_data('./data/train.csv')
+    objects, labels, ids = load_data('./data/train.csv')
     normalizer = DataNormalizer()
     normalizer.fit(objects)
     objects = normalizer.transform(objects)
@@ -33,7 +33,7 @@ def main():
     print('Train score = ' + str(score))
 
     print('Writing a submission file...')
-    test_objects, test_labels, test_ids =  load_data('./data/test.csv')
+    test_objects, test_labels, test_ids = load_data('./data/test.csv')
     test_objects = normalizer.transform(test_objects)
     predictions = clf.predict(test_objects)
     save_predictions('submission.csv', test_ids, predictions)

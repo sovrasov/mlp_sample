@@ -28,7 +28,7 @@ def load_data(data_path):
 def save_predictions(filename, ids, predictions):
     assert len(ids) == len(predictions)
 
-    with open(filename, 'wb') as csvfile:
+    with open(filename, 'w') as csvfile:
         writer = csv.writer(csvfile, quoting=csv.QUOTE_NONNUMERIC)
         writer.writerow(['ID', 'y'])
         for i, id in enumerate(ids):
@@ -36,7 +36,7 @@ def save_predictions(filename, ids, predictions):
 
 def split_dataset(x, y, testRatio = 0.2, seed = 0):
     randomInstance = random.Random(seed)
-    data = zip(x, y)
+    data = list(zip(x, y))
     trainSize = int((1.0 - testRatio)*len(y))
     randomInstance.shuffle(data)
     xTrain, yTrain = zip(*data[:trainSize])
