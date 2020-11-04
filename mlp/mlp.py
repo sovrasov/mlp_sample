@@ -24,15 +24,15 @@ class MLP:
     def _create_layer(self, num_inputs, num_outputs, activate=True):
         return {'w':np.random.rand(num_inputs, num_outputs), 'b': np.random.rand(num_outputs), 'a':activate,
                 'batch_grad_w':np.zeros((num_inputs, num_outputs), dtype=np.float32),
-                'batch_grad_b':np.zeros(num_outputs, dtype=np.float32)}
+                'w_v':np.zeros((num_inputs, num_outputs), dtype=np.float32),
+                'batch_grad_b':np.zeros(num_outputs, dtype=np.float32),
+                'b_v':np.zeros(num_outputs, dtype=np.float32)}
 
     def init_layers_(self, num_inputs, num_labels):
         np.random.seed(0)
         self.layers = []
-        hidden_layer = self._create_layer(num_inputs, 10, True)
-        self.layers.append(hidden_layer)
-        output_layer = self._create_layer(10, num_labels, False)
-        self.layers.append(output_layer)
+        self.layers.append(self._create_layer(num_inputs, 10, True))
+        self.layers.append(self._create_layer(10, num_labels, False))
 
     def forward_(self, x, train=False):
         signal = x
@@ -55,7 +55,7 @@ class MLP:
             else:
                 next_layer = self.layers[i + 1]
                 current_layer['delta'] = np.matmul(next_layer['w'], next_layer['delta']) * \
-                                         relu_der(current_layer['pre_output'])
+                                                   relu_der(current_layer['pre_output'])
             current_layer['batch_grad_b'] += current_layer['delta']
             current_layer['batch_grad_w'] += np.matmul(current_layer['input'].reshape(-1, 1),
                                                        current_layer['delta'].reshape(1, -1))
@@ -63,10 +63,11 @@ class MLP:
     def update_weights_(self):
         for i in reversed(range(len(self.layers))):
             current_layer = self.layers[i]
-            current_layer['batch_grad_b'] /= self.batch_size
-            current_layer['batch_grad_w'] /= self.batch_size
-            current_layer['b'] -= self.lr * current_layer['batch_grad_b']
-            current_layer['w'] -= self.lr * current_layer['batch_grad_w']
+            current_layer['b_v'] = self.momentum * current_layer['b_v'] + (self.lr / self.batch_size) * current_layer['batch_grad_b']
+            current_layer['w_v'] = self.momentum * current_layer['w_v'] + (self.lr / self.batch_size) * current_layer['batch_grad_w']
+
+            current_layer['b'] -= current_layer['b_v']
+            current_layer['w'] -= current_layer['w_v']
 
     def init_train_iter_(self):
         for layer in self.layers:
