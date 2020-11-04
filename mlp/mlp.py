@@ -7,6 +7,9 @@ def softmax(x):
 def relu(x):
     return x*(x > 0.)
 
+def relu_der(x):
+    return np.ones_like(x)* (x > 0.)
+
 class MLP:
     def __init__(self, lr, bs, momentum, verbose, max_iters, eps):
         self.layers = []
@@ -21,35 +24,40 @@ class MLP:
     def init_layers_(self, num_inputs, num_labels):
         np.random.seed(0)
         self.layers = []
-        hidden_layer = {'w':np.random.rand(num_inputs, 10), 'a':True}
+        hidden_layer = {'w':np.random.rand(num_inputs, 10), 'b': np.random.rand(10),  'a':True}
         self.layers.append(hidden_layer)
-        output_layer = {'w':np.random.rand(10, num_labels), 'a':False}
+        output_layer = {'w':np.random.rand(10, num_labels), 'b': np.random.rand(num_labels), 'a':False}
         self.layers.append(output_layer)
 
     def forward_(self, x, train=False):
         signal = x
         for layer in self.layers:
-            signal = np.matmul(np.transpose(layer['w']), signal)
+            if train: layer['input'] = np.copy(signal)
+            signal = np.matmul(np.transpose(layer['w']), signal) + layer['b']
             if layer['a']:
+                if train: layer['pre_output'] = signal
                 signal = relu(signal)
-            if train:
-                layer['output'] = signal
         return signal
 
-    def backward_(self, expected):
+    def backward_(self, expected, outputs):
         for i in reversed(range(len(self.layers))):
             current_layer = self.layers[i]
-            if i == len(self.layers) - 1:
-                errors = expected - softmax(current_layer['output'])
-
-                current_layer['delta'] = error * current_layer['output']
+            if i == len(self.layers) - 1: # handle the last layer
+                errors = expected - outputs
+                current_layer['delta'] = errors
+                if current_layer['a']:
+                    current_layer['delta'] *= relu_der(current_layer['pre_output'])
             else:
-                pass
-            #current_layer['delta'] = errors
-        pass
+                next_layer = self.layers[i + 1]
+                current_layer['delta'] = np.matmul(next_layer['w'], next_layer['delta']) * \
+                                         relu_der(current_layer['pre_output'])
 
     def update_weights_(self):
-        pass
+        for i in reversed(range(len(self.layers))):
+            current_layer = self.layers[i]
+            current_layer['b'] -= self.lr * current_layer['delta']
+            w_grad = np.matmul(current_layer['input'].reshape(-1, 1), current_layer['delta'].reshape(1, -1))
+            current_layer['w'] -= self.lr * w_grad
 
     def init_train_iter_(self):
         pass
@@ -81,14 +89,14 @@ class MLP:
                 idx = np.argmax(outputs)
                 label = self.labels_[idx]
                 expected = (self.labels_ == batch_y[j]).astype(np.int8)
-                self.backward_(expected)
+                self.backward_(expected, outputs)
             self.update_weights_()
 
     def predict(self, x):
         predictions = np.zeros(len(x))
         for i in range(len(x)):
-            logits = softmax(self.forward_(x[i]))
-            idx = np.argmax(logits)
+            probs = softmax(self.forward_(x[i]))
+            idx = np.argmax(probs)
             predictions[i] = self.labels_[idx]
 
         return predictions
