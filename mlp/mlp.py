@@ -5,13 +5,13 @@ def softmax(x):
     return ex / np.sum(ex)
 
 def relu(x):
-    return x*(x > 0.)
+    return x * (x > 0.)
 
 def relu_der(x):
-    return np.ones_like(x)* (x > 0.)
+    return np.ones_like(x) * (x > 0.)
 
 class MLP:
-    def __init__(self, lr, bs, momentum, verbose, max_iters, eps):
+    def __init__(self, lr, bs, momentum, verbose, max_iters, eps=0., hidden_dims=[10]):
         self.layers = []
         self.labels_ = []
         self.lr = lr
@@ -20,6 +20,8 @@ class MLP:
         self.verbose = verbose
         self.max_iters = max_iters
         self.eps = eps
+        assert len(hidden_dims) > 0
+        self.hidden_dims = hidden_dims
 
     def _create_layer(self, num_inputs, num_outputs, activate=True):
         return {'w':np.random.rand(num_inputs, num_outputs), 'b': np.random.rand(num_outputs), 'a':activate,
@@ -31,8 +33,10 @@ class MLP:
     def init_layers_(self, num_inputs, num_labels):
         np.random.seed(0)
         self.layers = []
-        self.layers.append(self._create_layer(num_inputs, 10, True))
-        self.layers.append(self._create_layer(10, num_labels, False))
+        self.layers.append(self._create_layer(num_inputs, self.hidden_dims[0], True))
+        for i in range(1, len(self.hidden_dims)):
+            self.layers.append(self._create_layer(self.hidden_dims[i - 1], self.hidden_dims[i], True))
+        self.layers.append(self._create_layer(self.hidden_dims[-1], num_labels, False))
 
     def forward_(self, x, train=False):
         signal = x
