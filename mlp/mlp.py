@@ -21,12 +21,17 @@ class MLP:
         self.max_iters = max_iters
         self.eps = eps
 
+    def _create_layer(self, num_inputs, num_outputs, activate=True):
+        return {'w':np.random.rand(num_inputs, num_outputs), 'b': np.random.rand(num_outputs), 'a':activate,
+                'batch_grad_w':np.zeros((num_inputs, num_outputs), dtype=np.float32),
+                'batch_grad_b':np.zeros(num_outputs, dtype=np.float32)}
+
     def init_layers_(self, num_inputs, num_labels):
         np.random.seed(0)
         self.layers = []
-        hidden_layer = {'w':np.random.rand(num_inputs, 10), 'b': np.random.rand(10),  'a':True}
+        hidden_layer = self._create_layer(num_inputs, 10, True)
         self.layers.append(hidden_layer)
-        output_layer = {'w':np.random.rand(10, num_labels), 'b': np.random.rand(num_labels), 'a':False}
+        output_layer = self._create_layer(10, num_labels, False)
         self.layers.append(output_layer)
 
     def forward_(self, x, train=False):
@@ -51,16 +56,22 @@ class MLP:
                 next_layer = self.layers[i + 1]
                 current_layer['delta'] = np.matmul(next_layer['w'], next_layer['delta']) * \
                                          relu_der(current_layer['pre_output'])
+            current_layer['batch_grad_b'] += current_layer['delta']
+            current_layer['batch_grad_w'] += np.matmul(current_layer['input'].reshape(-1, 1),
+                                                       current_layer['delta'].reshape(1, -1))
 
     def update_weights_(self):
         for i in reversed(range(len(self.layers))):
             current_layer = self.layers[i]
-            current_layer['b'] -= self.lr * current_layer['delta']
-            w_grad = np.matmul(current_layer['input'].reshape(-1, 1), current_layer['delta'].reshape(1, -1))
-            current_layer['w'] -= self.lr * w_grad
+            current_layer['batch_grad_b'] /= self.batch_size
+            current_layer['batch_grad_w'] /= self.batch_size
+            current_layer['b'] -= self.lr * current_layer['batch_grad_b']
+            current_layer['w'] -= self.lr * current_layer['batch_grad_w']
 
     def init_train_iter_(self):
-        pass
+        for layer in self.layers:
+            layer['batch_grad_b'] *= 0.
+            layer['batch_grad_w'] *= 0.
 
     def fit(self, x, y):
         num_samples = len(x)
